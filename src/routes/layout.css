@@ -1,3 +1,15 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
+
+@layer base {
+	html {
+		@apply bg-white text-black dark:bg-term-bg dark:text-term-fg;
+	}
+}
+
+@theme {
+	--color-term-bg: rgb(30, 30, 30);
+	--color-term-fg: rgb(255, 255, 255);
+	--color-term-cursor: rgb(152, 152, 157);
+}
