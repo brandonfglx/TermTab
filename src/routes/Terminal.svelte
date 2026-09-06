@@ -1,52 +1,70 @@
 <script module lang="ts">
 	type TerminalType = "stdout" | "err" | "stdin";
 
-	export interface TerminalLine {
-		id: string,
-		type: TerminalType
-		text: string
+	class TerminalStyle {
+		public color: string | undefined;
+		public fontWeight: number | "bold" | undefined;
+	}
+
+	class TerminalText {
+		public text: string;
+		public style: TerminalStyle;
+
+		constructor(text: string = "", style: TerminalStyle = new TerminalStyle()) {
+			this.text = text;
+			this.style = style;
+		}
+
+		// Formats style into a tailwind-acceptable format
+		public formatStyle() {
+			
+		}
+	}
+
+	class TerminalLine {
+		public id: string;
+		public type: TerminalType;
+		public text: TerminalText[];
+
+		constructor(id: string = "", type: TerminalType = "stdout", text: TerminalText[] = []) {
+			this.id = id;
+			this.type = type;
+			this.text = text;
+		}
 	}
 
 	class Terminal {
 		public history = $state<TerminalLine[]>([]);
 		public input = $state('');
 		private inputFlags = new Map<string, KeyboardEvent>();
-		public activeLine: TerminalLine = this.getDefaultActiveLine();
+		public activeLine = $state(new TerminalLine());
 
-		public print(text: string): void {
-			this.activeLine.text += text;
+		public print(text: string, style: TerminalStyle = new TerminalStyle()): void {
+			this.activeLine.text.push(new TerminalText(text, style));
 		}
 
-		public println(text: string = ""): void {
-			this.activeLine.text += text;
+		public println(text: string = "", style: TerminalStyle = new TerminalStyle()): void {
+			this.activeLine.text.push(new TerminalText(text, style));
 			this.flush();
 		}
 
-		public printerr(text: string): void {
-			this.activeLine.text += text;
+		public printerr(text: string, style: TerminalStyle = new TerminalStyle()): void {
+			this.activeLine.text.push(new TerminalText(text, style));
 			this.activeLine.type = "err";
 			this.flush();
 		}
 
+		// "Flushes" the active line to the history and resets the active line
 		private flush(): void {
 			this.activeLine.id = crypto.randomUUID();
-
 			this.history.push(this.activeLine);
-
-			this.activeLine = this.getDefaultActiveLine();
+			this.activeLine = new TerminalLine();
 		}
 
+		// Clears the history and active line
 		public clear(): void {
 			this.history = [];
-			this.activeLine = this.getDefaultActiveLine();
-		}
-
-		private getDefaultActiveLine(): TerminalLine {
-			return {
-				id: "",
-				type: "stdout",
-				text: ""
-			};
+			this.activeLine = new TerminalLine();
 		}
 
 		// Adds the keyboard event as an active flag
@@ -64,7 +82,9 @@
 			}
 		}
 
-		// TODO: Add a flag system to have all currently held down keys available (allows for alt+backspace for word delete, meta+backspace for line delete)
+		// TODO: Handle copy paste and cut
+		// TODO: Handle up/down arrows to return previous commands (use history & have a counter that resets everytime a user presses enter key)
+		// TODO: Add calculator (maybe add more advanced features)
 		public handleInput(): void {
 			if (this.inputFlags.has("Enter")) {
 				this.parse();
@@ -82,7 +102,7 @@
 				}
 			} else {
 				this.inputFlags.forEach((val: KeyboardEvent, key: string) => {
-					if (key !== "Meta" && key !== "Alt" && key !== "Shift") {
+					if (key !== "Meta" && key !== "Alt" && key !== "Shift" && !/F[1-9][0-9]?/g.test(key)) {
 						this.input += key;
 					}
 
@@ -95,19 +115,24 @@
 			this.inputFlags.clear();
 		}
 
+		// TODO: Add weather functionality (no args -> use ip address)
+		// TODO: Add about program (simple explainer)
+		// TODO: Add a fastfetch-like program (shows information about TermTab window and other information (possibly?))
 		public parse(): void {
-			this.history.push({
-				id: crypto.randomUUID(),
-				type: "stdin",
-				text: "guest@TermTab % " + this.input
-			});
+			this.history.push(
+				new TerminalLine(
+					crypto.randomUUID(), 
+					"stdin", 
+					[new TerminalText("guest@TermTab % " + this.input)]
+				)
+			);
 
 			let input = this.input.split(" ");
 			this.input = "";
 
 			switch (input.at(0)) {
 				case "help":
-					this.println("");
+					this.println("help not found");
 					break;
 				case "clear":
 					this.clear();
@@ -131,6 +156,11 @@
 					break;
 				case "ask":
 					window.open(`https://www.google.com/search?q=${encodeURIComponent(input.slice(1).join(" "))}&udm=50`, "_blank", "popup=false,noopener,noreferrer");
+					break;
+				case "info":
+					this.println(new Date().toString());
+					this.println(`User Agent: ${navigator.userAgent}`);
+					this.println(`Window: ${window.innerWidth}px x ${window.innerHeight}px`);
 					break;
 				default:
 					this.printerr(`TermTab: command not found: ${input.at(0)}`);
@@ -175,7 +205,7 @@
 			top: terminalDiv.scrollHeight,
 			behavior: "auto"
 		});
-	})
+	});
 
 	onMount(() => {
 		document.addEventListener("keydown", (event: KeyboardEvent) => {
@@ -187,21 +217,31 @@
 			terminal.removeInput(event);
 		});
 	});
-
-
 </script>
 
 <div id="terminal" class="p-2" bind:this={terminalDiv}>
 	<div id="history" class="font-mono text-base">
 		<!-- TODO: Add special formatting for various text inputs -->
-		{#each terminal.history as item}
-			{#if item.type === 'err'}
-				<p class="break-all text-red-500">{item.text}</p>
+		{#each terminal.history as line}
+			{#if line.type === 'err'}
+				<p class="break-all text-red-500">
+					{#each line.text as termText}
+						<span>{termText.text}</span>
+					{/each}
+				</p>
 			{:else}
-				<p class="break-all">{item.text}</p>
+				<p class="break-all">
+					{#each line.text as termText}
+						<span>{termText.text}</span>
+					{/each}
+				</p>
 			{/if}
 		{/each}
-		<p>{terminal.activeLine.text}</p>
+		<p class="">
+			{#each terminal.activeLine.text as termText}
+				<span>{termText.text}</span>
+			{/each}
+		</p>
 	</div>
 	<div id="active" class="font-mono text-base">
 		<span class="break-all">guest@TermTab % {terminal.input}</span><span id="cursor" class="bg-term-cursor"></span>
