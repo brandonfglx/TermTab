@@ -1,5 +1,5 @@
 <script module lang="ts">
-	type TerminalType = 'stdout' | 'err' | 'stdin';
+	type TerminalType = "stdout" | "err" | "stdin";
 
 	export interface TerminalLine {
 		id: string,
@@ -10,20 +10,21 @@
 	class Terminal {
 		public history = $state<TerminalLine[]>([]);
 		public input = $state('');
+		private inputFlags = new Map<string, KeyboardEvent>();
 		public activeLine: TerminalLine = this.getDefaultActiveLine();
 
 		public print(text: string): void {
 			this.activeLine.text += text;
 		}
 
-		public println(text: string = ''): void {
+		public println(text: string = ""): void {
 			this.activeLine.text += text;
 			this.flush();
 		}
 
 		public printerr(text: string): void {
 			this.activeLine.text += text;
-			this.activeLine.type = 'err';
+			this.activeLine.type = "err";
 			this.flush();
 		}
 
@@ -48,29 +49,93 @@
 			};
 		}
 
-		public handleInput(event: KeyboardEvent): void {
-			if (event.key === "Enter") {
-				this.pushInput();
-				this.parse();
-			} else if (event.key === "Backspace" && this.input.length > 0) {
-				this.input = this.input.slice(0, this.input.length - 1);
-			} else if (event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) {
-				this.input += event.key;
+		// Adds the keyboard event as an active flag
+		public addInput(event: KeyboardEvent): void {
+			this.inputFlags.set(event.key, event);
+		}
+
+		// Removes the keyboard event as an active flag
+		public removeInput(event: KeyboardEvent): void {
+			this.inputFlags.delete(event.key);
+
+			// Clear list since chording w/ Meta doesn't report keyup
+			if (event.key === "Meta") {
+				this.inputFlags.clear();
 			}
 		}
 
-		public pushInput(): void {
-			this.history.push({
-				id: crypto.randomUUID(),
-				type: 'stdin',
-				text: 'guest@TermTab % ' + this.input
-			});
+		// TODO: Add a flag system to have all currently held down keys available (allows for alt+backspace for word delete, meta+backspace for line delete)
+		public handleInput(): void {
+			if (this.inputFlags.has("Enter")) {
+				this.parse();
+			} else if (this.inputFlags.has("Backspace")) {
+				if (this.input.length == 0) {
+					return;
+				}
 
-			this.input = '';
+				if (this.inputFlags.get("Backspace")?.metaKey) {
+					this.input = "";
+				} else if (this.inputFlags.get("Backspace")?.altKey) {
+					this.input = this.input.substring(0, this.input.lastIndexOf(" "));
+				} else {
+					this.input = this.input.substring(0, this.input.length - 1);
+				}
+			} else {
+				this.inputFlags.forEach((val: KeyboardEvent, key: string) => {
+					if (key !== "Meta" && key !== "Alt" && key !== "Shift") {
+						this.input += key;
+					}
+
+					if (key === "/") {
+						val.preventDefault();
+					}
+				});
+			}
+
+			this.inputFlags.clear();
 		}
 
 		public parse(): void {
-			this.printerr("Invalid Input")
+			this.history.push({
+				id: crypto.randomUUID(),
+				type: "stdin",
+				text: "guest@TermTab % " + this.input
+			});
+
+			let input = this.input.split(" ");
+			this.input = "";
+
+			switch (input.at(0)) {
+				case "help":
+					this.println("");
+					break;
+				case "clear":
+					this.clear();
+					break;
+				case "echo":
+					this.println(input.slice(1).join(" "));
+					break;
+				case "goto":
+					if (input.length >= 2) {
+						if (!/^https?:\/\//i.test(input[1])) {
+							input[1] = "https://" + input[1];
+						}
+
+						window.open(`${input.at(1)}`, "_blank", "popup=false,noopener,noreferrer");
+					} else {
+						this.printerr("goto: no url provided");
+					}
+					break;
+				case "search":
+					window.open(`https://www.google.com/search?q=${encodeURIComponent(input.slice(1).join(" "))}`, "_blank", "popup=false,noopener,noreferrer");
+					break;
+				case "ask":
+					window.open(`https://www.google.com/search?q=${encodeURIComponent(input.slice(1).join(" "))}&udm=50`, "_blank", "popup=false,noopener,noreferrer");
+					break;
+				default:
+					this.printerr(`TermTab: command not found: ${input.at(0)}`);
+					break;
+			}
 		}
 	}
 
@@ -82,7 +147,6 @@
 		display: inline-flex;
 		width: 10px;
 		height: 20px;
-		background-color: rgb(0, 226, 0);
 		animation: blink 1s infinite;
 		vertical-align: text-bottom;
 	}
@@ -115,7 +179,12 @@
 
 	onMount(() => {
 		document.addEventListener("keydown", (event: KeyboardEvent) => {
-			terminal.handleInput(event);
+			terminal.addInput(event);
+			terminal.handleInput();
+		});
+
+		document.addEventListener("keyup", (event: KeyboardEvent) => {
+			terminal.removeInput(event);
 		});
 	});
 
@@ -135,6 +204,6 @@
 		<p>{terminal.activeLine.text}</p>
 	</div>
 	<div id="active" class="font-mono text-base">
-		<span class="break-all">guest@TermTab % {terminal.input}</span><span id="cursor"></span>
+		<span class="break-all">guest@TermTab % {terminal.input}</span><span id="cursor" class="bg-term-cursor"></span>
 	</div>
 </div>
