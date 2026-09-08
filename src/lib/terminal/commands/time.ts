@@ -2,13 +2,13 @@ import type { Command } from "../terminal.svelte";
 import { terminal } from "../terminal.svelte";
 
 export default class Clear implements Command {
-	public name: string = "clear";
-	public desc: string = "clears the terminal";
+	public name: string = "time";
+	public desc: string = "prints the current time";
 
 	public help(args?: string[]): string[] {
 		return [
 			`${this.name}: ${this.desc}`,
-			"	Usage: clear"
+			"	Usage: time"
 		];
 	}
 
@@ -19,6 +19,6 @@ export default class Clear implements Command {
 	}
 
 	public execute(args: Map<string, string>): void {
-		terminal.clear();
+		terminal.println(new Date().toString());
 	}
 }

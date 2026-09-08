@@ -5,7 +5,7 @@ export default class Help implements Command {
 	public name: string = "help";
 	public desc: string = "shows the help menu";
 
-	public help(args: string[]): string[] {
+	public help(args?: string[]): string[] {
 		return [
 			`${this.name}: ${this.desc}`,
 			"	Usage: help [cmd] [...args]",
@@ -18,9 +18,12 @@ export default class Help implements Command {
 	public parseArgs(args: string[]): Map<string, string> {
 		let map = new Map<string, string>();
 
-		// TODO: fix parsing
 		if (args.length > 0) {
-			map.set(args.join(" "), "");
+			map.set("cmd", args[0]);
+
+			if (args.length > 1) {
+				map.set("args", args.slice(1).join(" "));
+			}
 		}
 
 		return map;
@@ -34,9 +37,33 @@ export default class Help implements Command {
 				terminal.println(` - ${name}: ${cmd.desc}`);
 			}
 
+			terminal.println();
+			terminal.println("Use \"help [cmd]\" for help on specific commands.");
+
 			return;
 		} else {
-			// TODO: Handle help for commands and commands + args
+			let argsCmd = args.get("cmd");
+			if (!argsCmd) {
+				terminal.printerr("help: command not found.");
+				return;
+			}
+
+			let cmd = terminal.commands.get(argsCmd);
+			if (!cmd) {
+				terminal.printerr(`help: command not found: ${argsCmd}`);
+				return;
+			}
+
+			let cmdArgs = args.get("args");
+			if (!cmdArgs) {
+				cmd.help().forEach((str) => {
+					terminal.println(str);
+				});
+			} else {
+				cmd.help(cmdArgs.split(" ")).forEach((str) => {
+					terminal.println(str);
+				});
+			}
 		}
 	}
 }

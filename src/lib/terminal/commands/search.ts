@@ -1,36 +1,88 @@
-import type { Command } from "../terminal.svelte";
+import { terminal, type Command } from "../terminal.svelte";
 
 export default class Search implements Command {
 	public name: string = "search";
-	public desc: string = "search using Google";
+	public desc: string = "search the World Wide Web";
 
-	public help(args: string[]): string[] {
-		return [
+	public defaultFlag: string = "-g";
+
+	private argMapping: Map<String, String> = new Map([
+		["-g", "https://www.google.com/?q=%s"],
+		["--google", "https://www.google.com/?q=%s"],
+		["-ddg", "https://duckduckgo.com/?q=%s"],
+		["--duck-duck-go", "https://duckduckgo.com/?q=%s"],
+		["-yt", "https://www.youtube.com/results?search_query=%s"],
+		["--youtube", "https://www.youtube.com/results?search_query=%s"],
+		["-w", "https://en.wikipedia.org/wiki?search=%s"],
+		["--wikipedia", "https://en.wikipedia.org/wiki?search=%s"],
+		["-gai", "https://www.google.com/search?q=%s&udm=50"],
+		["--google-ai", "https://www.google.com/search?q=%s&udm=50"]
+	]);
+
+	public help(args?: string[]): string[] {
+		let help = [
 			`${this.name}: ${this.desc}`,
-			"	Usage: search [query]",
-			"	Args:",
-			"		query: search query"
+			"\tUsage: search [site] [query]",
+			"\tArgs:",
+			"\t\tsite: tag of site to search"
 		];
+
+		this.argMapping.forEach((val, key) => {
+			help.push(`\t\t\t${key}: ${val}`);
+		});
+
+		help.push("\t\tquery: search query");
+
+		return help;
 	}
 
 	public parseArgs(args: string[]): Map<string, string> {
 		let map = new Map<string, string>();
 
-		// TODO: fix parsing
-		if (args.length > 0) {
-			map.set("query", args.join(" "));
+		if (args.length == 0) {
+			map.set(this.defaultFlag, "");
+			return map;
+		}
+
+		let currFlag = "";
+		let currVal = "";
+
+		if (!args[0].startsWith("-")) {
+			currFlag = this.defaultFlag;
+		}
+
+		for (let arg of args) {
+			if (arg.startsWith("-")) {
+				if (currVal.length !== 0) {
+					map.set(currFlag, currVal);
+				}
+
+				currFlag = arg;
+			} else {
+				if (currVal.length === 0) {
+					currVal = arg;
+				} else {
+					currVal += ` ${arg}`;
+				}
+			}
+		}
+
+		if (currFlag.length !== 0 && currVal.length !== 0) {
+			map.set(currFlag, currVal);
 		}
 
 		return map;
 	}
 
 	public execute(args: Map<string, string>): void {
-		let query = args.get("query");
+		args.forEach((val, key) => {
+			let url = this.argMapping.get(key);
 
-		if (query) {
-			window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, "_blank", "popup=false,noopener,noreferrer");
-		} else {
-			window.open(`https://www.google.com/`, "_blank", "popup=false,noopener,noreferrer");
-		}
+			if (url) {
+				window.open(url.replace("%s", encodeURIComponent(val)), "_blank");
+			} else {
+				terminal.printerr(`search: invalid search engine parameter: ${key}`);
+			}
+		});
 	}
 }

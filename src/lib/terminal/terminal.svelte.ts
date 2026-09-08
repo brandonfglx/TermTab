@@ -3,8 +3,26 @@ import { SvelteMap } from "svelte/reactivity";
 type TerminalType = "stdout" | "err" | "stdin";
 
 class TerminalStyle {
-	public color: string | undefined;
-	public fontWeight: number | "bold" | undefined;
+	public color: string | undefined; // Use tailwind colors directly or use text-[#ffffff] (hex)
+	public fontWeight: number | "bold" | undefined; // Use number for weight or "bold"
+
+	public compile(): string {
+		let compiled: string[] = [];
+
+		if (this.color) {
+			compiled.push(this.color);
+		}
+
+		if (this.fontWeight) {
+			if (typeof this.fontWeight === "number") {
+				compiled.push(`font-[${this.fontWeight}]`);
+			} else {
+				compiled.push(`font-${this.fontWeight}`);
+			}
+		}
+
+		return compiled.join(" ");
+	}
 }
 
 class TerminalText {
@@ -22,8 +40,8 @@ class TerminalText {
 	}
 
 	// Formats style into a tailwind-acceptable format
-	public getFormattedStyle() {
-
+	public getFormattedStyle(): string {
+		return this.style.compile();
 	}
 }
 
@@ -41,10 +59,13 @@ class TerminalLine {
 
 class Terminal {
 	public commands = $state(new SvelteMap<string, Command>()); // The available commands dynamically fetched from $lib/terminal/commands
-	public history = $state<TerminalLine[]>([]); // The history of TerminalLines / text
+	public history = $state<TerminalLine[]>([]); // The history of all TerminalLines / text
+	public inputHistory = $state<TerminalLine[]>([]);
 	public input = $state(''); // The (not submitted) input from the user
 	public activeLine = $state(new TerminalLine()); // The line where the cursor is - mainly used for print()
 	private inputFlags = new Map<string, KeyboardEvent>();
+
+	private historyCounter: number = 0;
 
 	constructor() {
 		this.loadCommands();
@@ -69,7 +90,11 @@ class Terminal {
 		this.activeLine.text.push(new TerminalText(text, style));
 	}
 
-	public println(text: string = "", style: TerminalStyle = new TerminalStyle()): void {
+	public println(text: string = "\0", style: TerminalStyle = new TerminalStyle()): void {
+		if (text.length === 0) {
+			text = "\0";
+		}
+
 		this.activeLine.text.push(new TerminalText(text, style));
 		this.flush();
 	}
@@ -93,6 +118,10 @@ class Terminal {
 		this.activeLine = new TerminalLine();
 	}
 
+	public paste(event: ClipboardEvent) {
+		this.input += event.clipboardData?.getData("text/plain");
+	}
+
 	// Adds the keyboard event as an active flag
 	public addInput(event: KeyboardEvent): void {
 		this.inputFlags.set(event.key, event);
@@ -108,11 +137,9 @@ class Terminal {
 		}
 	}
 
-	// TODO: Handle copy paste and cut
-	// TODO: Handle up/down arrows to return previous commands (use history & have a counter that resets everytime a user presses enter key)
-	// TODO: Add calculator (maybe add more advanced features)
 	public handleInput(): void {
 		if (this.inputFlags.has("Enter")) {
+			this.historyCounter = 0;
 			this.execute();
 		} else if (this.inputFlags.has("Backspace")) {
 			if (this.input.length == 0) {
@@ -126,16 +153,38 @@ class Terminal {
 			} else {
 				this.input = this.input.substring(0, this.input.length - 1);
 			}
+		} else if (this.inputFlags.has("ArrowUp")) { // TODO: Fix history
+			this.historyCounter = Math.max(Math.min(this.historyCounter - 1, 0), -this.inputHistory.length);
+
+			let rebuilt = "";
+			this.inputHistory[this.inputHistory.length + this.historyCounter].text.forEach((tt) => {
+				rebuilt += tt.text;
+			});
+
+			this.input = rebuilt;
+		} else if (this.inputFlags.has("ArrowDown")) {
+			this.historyCounter = Math.max(Math.min(this.historyCounter + 1, 0), -this.inputHistory.length);
+
+			let rebuilt = "";
+			if (this.historyCounter === 0) {
+				rebuilt = "";
+			} else {
+				this.inputHistory[this.inputHistory.length + this.historyCounter].text.forEach((tt) => {
+					rebuilt += tt.text;
+				});
+			}
+
+			this.input = rebuilt;
 		} else {
 			this.inputFlags.forEach((val: KeyboardEvent, key: string) => {
-				if (key === "/") {
+				if (key === "/" || key == "'") {
 					val.preventDefault();
 				} else if (key === "Tab") {
 					val.preventDefault();
-					key = "    ";
+					key = "\t";
 				}
 
-				if (key !== "Meta" && key !== "Alt" && key !== "Shift" && !/F[1-9][0-9]?/g.test(key)) {
+				if (!val.metaKey && !val.ctrlKey && key !== "Alt" && key !== "Shift" && key !== "Escape" && key !== "CapsLock" && key !== "ArrowLeft" && key !== "ArrowRight" && !/F[1-9][0-9]?/g.test(key) && key !== "Dead") {
 					this.input += key;
 				}
 			});
@@ -145,9 +194,16 @@ class Terminal {
 	}
 
 	// TODO: Add weather functionality (no args -> use ip address)
-	// TODO: Add about program (simple explainer)
-	// TODO: Add a fastfetch-like program (shows information about TermTab window and other information (possibly?))
+	// TODO: Add calculator (maybe add more advanced features)
 	public execute(): void {
+		this.inputHistory.push(
+			new TerminalLine(
+				crypto.randomUUID(),
+				"stdin",
+				[new TerminalText(this.input)]
+			)
+		);
+
 		this.history.push(
 			new TerminalLine(
 				crypto.randomUUID(), 
@@ -156,23 +212,26 @@ class Terminal {
 			)
 		);
 
-		let input = this.input.trim().split(" ");
+		this.executeCommand(this.input);
+
 		this.input = "";
+	}
 
-		let rawCommand = input.at(0);
+	public executeCommand(command: string): void {
+		let cmdSplit = command.trim().split(" ");
 
-		// Check for invalid inputs
-		if (rawCommand === undefined || rawCommand.length == 0) {
+		let cmd = cmdSplit.at(0);
+
+		if (cmd === undefined || cmd.length === 0) {
 			return;
 		}
 
-		let command = this.commands.get(rawCommand);
+		let comm = this.commands.get(cmd);
 
-		// Check if the command requested exists, if so, execute it
-		if (command !== undefined) {
-			command.execute(command.parseArgs(input.slice(1)));
+		if (comm !== undefined) {
+			comm.execute(comm.parseArgs(cmdSplit.slice(1)));
 		} else {
-			this.printerr(`TermTab: command not found: ${input.at(0)}`);
+			this.printerr(`TermTab: command not found: ${cmd}`);
 		}
 	}
 }
@@ -180,7 +239,7 @@ class Terminal {
 export interface Command {
 	name: string,
 	desc: string,
-	help(args: string[]): string[],
+	help(args?: string[]): string[],
 	parseArgs(args: string[]): Map<string, string>,
 	execute(args: Map<string, string>): void
 }

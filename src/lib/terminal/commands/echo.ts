@@ -5,7 +5,7 @@ export default class Echo implements Command {
 	public name: string = "echo";
 	public desc: string = "prints text to the terminal"
 
-	public help(args: string[]): string[] {
+	public help(args?: string[]): string[] {
 		return [
 			`${this.name}: ${this.desc}`,
 			"	Usage: echo [text]",

@@ -5,7 +5,7 @@ export default class Info implements Command {
 	public name: string = "info";
 	public desc: string = "returns info about the current session";
 
-	public help(args: string[]): string[] {
+	public help(args?: string[]): string[] {
 		return [
 			`${this.name}: ${this.desc}`,
 			"	Usage: info"
@@ -18,9 +18,24 @@ export default class Info implements Command {
 		return map;
 	}
 
-	public execute(args: Map<string, string>): void {
-		terminal.println(new Date().toString());
-		terminal.println(`User Agent: ${navigator.userAgent}`);
-		terminal.println(`Window: ${window.innerWidth}px x ${window.innerHeight}px`);
+	public async execute(args: Map<string, string>): Promise<void> {
+		(await this.getInfo()).forEach((str) => {
+			terminal.println(str);
+		});
+	}
+
+	private async getInfo(): Promise<string[]> {
+		// GPU info
+		let canvas = document.createElement("canvas");
+		let gl = canvas.getContext("webgl");
+		let gpu = gl?.getParameter(gl.RENDERER);
+		canvas.remove();
+
+		return [
+			`User Agent: ${navigator.userAgent}`,
+			`Window: ${window.innerWidth}px x ${window.innerHeight}px`,
+			`CPU Cores: ${navigator.hardwareConcurrency}`,
+			`GPU: ${gpu}`
+		];
 	}
 }

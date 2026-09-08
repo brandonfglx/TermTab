@@ -43,12 +43,16 @@
 		document.addEventListener("keyup", (event: KeyboardEvent) => {
 			terminal.removeInput(event);
 		});
+
+		document.addEventListener("paste", (event: ClipboardEvent) => {
+			terminal.paste(event);
+		});
 	});
 </script>
 
 <div id="terminal" class="p-2" bind:this={terminalDiv}>
 	<div id="history" class="font-mono text-base">
-		<!-- TODO: Add special formatting for various text inputs -->
+		<!-- TODO: Render with getFormattedStyle() as tailwind classes -->
 		{#each terminal.history as line}
 			{#if line.type === 'err'}
 				<p class="break-all whitespace-pre-wrap text-red-500">

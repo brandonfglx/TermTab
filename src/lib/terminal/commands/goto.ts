@@ -5,12 +5,12 @@ export default class GoTo implements Command {
 	public name: string = "goto";
 	public desc: string = "goes to a url";
 
-	public help(args: string[]): string[] {
+	public help(args?: string[]): string[] {
 		return [
 			`${this.name}: ${this.desc}`,
 			"	Usage: goto [url]",
 			"	Args:",
-			"		url: url to go to"
+			"		url: target url"
 		];
 	}
 
@@ -31,7 +31,7 @@ export default class GoTo implements Command {
 				url = "https://" + url;
 			}
 
-			window.open(`${url}`, "_blank", "popup=false,noopener,noreferrer");
+			window.open(`${url}`, "_blank");
 		} else {
 			terminal.printerr("goto: no url provided");
 		}
