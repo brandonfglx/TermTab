@@ -64,6 +64,7 @@ class Terminal {
 	public input = $state(''); // The (not submitted) input from the user
 	public activeLine = $state(new TerminalLine()); // The line where the cursor is - mainly used for print()
 	private inputFlags = new Map<string, KeyboardEvent>();
+	public executing = $state(false); // Flag to halt user input if a program is operating
 
 	private historyCounter: number = 0;
 
@@ -138,6 +139,10 @@ class Terminal {
 	}
 
 	public handleInput(): void {
+		if (this.executing) {
+			return;
+		}
+
 		if (this.inputFlags.has("Enter")) {
 			this.historyCounter = 0;
 			this.execute();

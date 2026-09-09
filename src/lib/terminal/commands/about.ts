@@ -8,7 +8,7 @@ export default class About implements Command {
 	private version = "0.0.1";
 
 	private about: string[] = [
-		`TermTab v${this.version}`,
+		`TermTab v${this.version} ©${new Date().getFullYear()} brandonfglx`,
 		"	GUIs are boring; try a terminal window instead!",
 		"",
 		"	A terminal like interface on the web. Go to any domain, search with your favorite search engine,",
@@ -21,9 +21,9 @@ export default class About implements Command {
 	public help(args?: string[]): string[] {
 		return [
 			`${this.name}: ${this.desc}`,
-			"	Usage: about [-v | --version]",
-			"	Args:",
-			"		-v | --version: shows TermTab version"
+			`\tUsage: ${this.name} [-v | --version]`,
+			"\tArgs:",
+			"\t\t-v | --version: shows TermTab version"
 		];
 	}
 

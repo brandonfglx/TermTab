@@ -8,10 +8,10 @@ export default class Help implements Command {
 	public help(args?: string[]): string[] {
 		return [
 			`${this.name}: ${this.desc}`,
-			"	Usage: help [cmd] [...args]",
-			"	Args:",
-			"		cmd: command to get help for; shows help menu if none provided",
-			"		args: arguments for the command"
+			`\tUsage: ${this.name} [cmd] [...args]`,
+			"\tArgs:",
+			"\t\tcmd: command to get help for; shows help menu if none provided",
+			"\t\targs: arguments for the command"
 		];
 	}
 

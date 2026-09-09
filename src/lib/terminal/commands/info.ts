@@ -8,7 +8,7 @@ export default class Info implements Command {
 	public help(args?: string[]): string[] {
 		return [
 			`${this.name}: ${this.desc}`,
-			"	Usage: info"
+			`\tUsage: ${this.name}`
 		];
 	}
 

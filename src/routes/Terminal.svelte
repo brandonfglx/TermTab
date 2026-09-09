@@ -75,6 +75,8 @@
 		</p>
 	</div>
 	<div id="active" class="font-mono text-base">
-		<span class="break-all whitespace-pre-wrap">guest@TermTab % {terminal.input}</span><span id="cursor" class="bg-term-cursor"></span>
+		{#if !terminal.executing}
+			<span class="break-all whitespace-pre-wrap">guest@TermTab % {terminal.input}</span><span id="cursor" class="bg-term-cursor"></span>
+		{/if}
 	</div>
 </div>

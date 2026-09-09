@@ -8,7 +8,7 @@ export default class Clear implements Command {
 	public help(args?: string[]): string[] {
 		return [
 			`${this.name}: ${this.desc}`,
-			"	Usage: clear"
+			`\tUsage: ${this.name}`
 		];
 	}
 

@@ -7,8 +7,8 @@ export default class Search implements Command {
 	public defaultFlag: string = "-g";
 
 	private argMapping: Map<String, String> = new Map([
-		["-g", "https://www.google.com/?q=%s"],
-		["--google", "https://www.google.com/?q=%s"],
+		["-g", "https://www.google.com/search?q=%s"],
+		["--google", "https://www.google.com/search?q=%s"],
 		["-ddg", "https://duckduckgo.com/?q=%s"],
 		["--duck-duck-go", "https://duckduckgo.com/?q=%s"],
 		["-yt", "https://www.youtube.com/results?search_query=%s"],
@@ -22,9 +22,10 @@ export default class Search implements Command {
 	public help(args?: string[]): string[] {
 		let help = [
 			`${this.name}: ${this.desc}`,
-			"\tUsage: search [site] [query]",
+			`\tUsage: ${this.name} [site] [query]`,
 			"\tArgs:",
-			"\t\tsite: tag of site to search"
+			"\t\tsite: tag of site to search",
+			"\t\tquery: text to search"
 		];
 
 		this.argMapping.forEach((val, key) => {

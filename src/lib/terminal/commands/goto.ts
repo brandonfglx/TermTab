@@ -8,9 +8,9 @@ export default class GoTo implements Command {
 	public help(args?: string[]): string[] {
 		return [
 			`${this.name}: ${this.desc}`,
-			"	Usage: goto [url]",
-			"	Args:",
-			"		url: target url"
+			`\tUsage: ${this.name} [url]`,
+			"\tArgs:",
+			"\t\turl: target url"
 		];
 	}
 

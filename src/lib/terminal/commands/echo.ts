@@ -8,9 +8,9 @@ export default class Echo implements Command {
 	public help(args?: string[]): string[] {
 		return [
 			`${this.name}: ${this.desc}`,
-			"	Usage: echo [text]",
-			"	Args:",
-			"		text: text to print to terminal"
+			`\tUsage: ${this.name} [text]`,
+			"\tArgs:",
+			"\t\ttext: text to print to terminal"
 		];
 	}
 
