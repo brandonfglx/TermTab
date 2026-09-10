@@ -12,7 +12,8 @@ interface WeatherParams {
 	current: string[],
 	temperature_unit: "celcius" | "fahrenheit",
 	wind_speed_unit: "kmh" | "ms" | "mph" | "knots",
-	precipitation_unit: "mm" | "inch"
+	precipitation_unit: "mm" | "inch",
+	forecast_days: number
 }
 
 export default class Weather implements Command {
@@ -68,30 +69,90 @@ export default class Weather implements Command {
 		"kg/m³"
 	];
 
+	// Maps arg flags to string id
+	private argMapping: Map<string, string> = new Map([
+		["-z", "zipCode"],
+		["--zip-code", "zipCode"],
+		["-d", "days"],
+		["--days", "days"]
+	]);
+
+	// Default values relating string id to default value
+	private defaultArgs: Map<string, string> = new Map([
+		["days", "3"]
+	]);
+
 	public help(args?: string[]): string[] {
 		return [
 			`${this.name}: ${this.desc}`,
-			`\tUsage: weather [zipCode?]`,
+			`\tUsage: weather [ -z | --zipcode [zipCode] ] [ -d | --days [days] ]`,
 			`\tArgs:`,
-			`\tzipcode: US zip code to get weather for`
+			`\t\tzipcode?: US zip code to get weather for`,
+			`\t\tdays?: # of forecast days to show (up to maximum in data)`
 		];
 	}
 
 	// TODO: add options to regulate output (-z | --zipcode [zipcode], -d | --days [days])
 	public parseArgs(args: string[]): Map<string, string> {
-		let map = new Map<string, string>();
+		if (args.length === 0) {
+			return this.defaultArgs;
+		}
 
-		for (let arg of args) {
-			// Only add "valid" zip codes
-			if (/[0-9]{5}/.test(arg)) {
-				map.set("zipCode", arg);
+		let map = new Map<string, string>(this.defaultArgs);
+
+		let currFlag = "";
+		let currVal = "";
+
+		try {
+			for (let arg of args) {
+				if (arg.startsWith("-")) {
+					if (currVal.length !== 0) {
+						map.set(currFlag, currVal);
+					}
+
+					let mapped = this.argMapping.get(arg);
+
+					if (mapped) {
+						currFlag = mapped;
+					} else {
+						throw new Error(`weather: invalid argument: ${arg}`);
+					}
+
+					currVal = "";
+				} else {
+					switch (currFlag) {
+						case "zipCode":
+							// Only add "valid" zip codes
+							if (/[0-9]{5}/.test(arg)) {
+								currVal = arg;
+							} else {
+								throw new Error(`weather: invalid zip code: ${arg}`);
+							}
+							break;
+						case "days":
+							if (/[0-9]+/.test(arg)) {
+								currVal = arg;
+							} else {
+								throw new Error(`weather: invalid days: ${arg}`);
+							}
+							break;
+						default:
+							throw new Error(`weather: unknown flag: ${currFlag}`);
+					}
+				}
 			}
+
+			if (currFlag.length !== 0 && currVal.length !== 0) {
+				map.set(currFlag, currVal);
+			}
+		} catch (e: any) {
+			terminal.printerr(e);
 		}
 
 		return map;
 	}
 
-	public getWeatherParams(loc: LocationInfo): WeatherParams {
+	public getWeatherParams(loc: LocationInfo, days: number): WeatherParams {
 		return {
 			latitude: loc.latitude,
 			longitude: loc.longitude,
@@ -100,7 +161,8 @@ export default class Weather implements Command {
 			current: ["temperature_2m", "apparent_temperature", "wind_speed_10m", "wind_direction_10m", "precipitation"],
 			temperature_unit: "fahrenheit",
 			wind_speed_unit: "mph",
-			precipitation_unit: "inch"
+			precipitation_unit: "inch",
+			forecast_days: days
 		};
 	}
 
@@ -112,7 +174,7 @@ export default class Weather implements Command {
 		try {
 			let loc = await Location.fetchLoc(args.get("zipCode"));
 
-			weatherResp = await fetchWeatherApi(this.weatherApi, this.getWeatherParams(loc));
+			weatherResp = await fetchWeatherApi(this.weatherApi, this.getWeatherParams(loc, Number(args.get("days")!)));
 
 			// Only process the first weather (maybe process others - controlled by flag?)
 			let weather = weatherResp[0];

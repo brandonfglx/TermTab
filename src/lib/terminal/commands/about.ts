@@ -5,7 +5,7 @@ export default class About implements Command {
 	public name: string = "about";
 	public desc: string = "informaion about TermTab";
 
-	private version = "0.0.1";
+	private version = "0.0.2";
 
 	private about: string[] = [
 		`TermTab v${this.version} ©${new Date().getFullYear()} brandonfglx`,
@@ -13,7 +13,7 @@ export default class About implements Command {
 		"",
 		"	A terminal like interface on the web. Go to any domain, search with your favorite search engine,",
 		"	and check the weather all on one page. This static webpage gives you all the power to customize",
-		"	your experience; scour through the source code on GitHub: https://www.github.com/brandonfglx/termtab",
+		"	your experience; scour through the source code on GitHub: https://www.github.com/brandonfglx/TermTab",
 		"",
 		"	Need help on a command or not sure where to start? -> use the \"help\" command!"
 	];

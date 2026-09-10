@@ -158,7 +158,9 @@ class Terminal {
 			} else {
 				this.input = this.input.substring(0, this.input.length - 1);
 			}
-		} else if (this.inputFlags.has("ArrowUp")) { // TODO: Fix history
+		} else if (this.inputFlags.has("ArrowUp")) {
+			this.inputFlags.get("ArrowUp")?.preventDefault();
+
 			this.historyCounter = Math.max(Math.min(this.historyCounter - 1, 0), -this.inputHistory.length);
 
 			let rebuilt = "";
@@ -168,6 +170,8 @@ class Terminal {
 
 			this.input = rebuilt;
 		} else if (this.inputFlags.has("ArrowDown")) {
+			this.inputFlags.get("ArrowDown")?.preventDefault();
+
 			this.historyCounter = Math.max(Math.min(this.historyCounter + 1, 0), -this.inputHistory.length);
 
 			let rebuilt = "";
@@ -201,13 +205,15 @@ class Terminal {
 	// TODO: Add weather functionality (no args -> use ip address)
 	// TODO: Add calculator (maybe add more advanced features)
 	public execute(): void {
-		this.inputHistory.push(
-			new TerminalLine(
-				crypto.randomUUID(),
-				"stdin",
-				[new TerminalText(this.input)]
-			)
-		);
+		if (this.input.length > 0) {
+			this.inputHistory.push(
+				new TerminalLine(
+					crypto.randomUUID(),
+					"stdin",
+					[new TerminalText(this.input)]
+				)
+			);
+		}
 
 		this.history.push(
 			new TerminalLine(

@@ -22,17 +22,15 @@ export default class Search implements Command {
 	public help(args?: string[]): string[] {
 		let help = [
 			`${this.name}: ${this.desc}`,
-			`\tUsage: ${this.name} [site] [query]`,
+			`\tUsage: ${this.name} [tag] [query]`,
 			"\tArgs:",
-			"\t\tsite: tag of site to search",
+			"\t\ttag: tag of site to search",
 			"\t\tquery: text to search"
 		];
 
 		this.argMapping.forEach((val, key) => {
 			help.push(`\t\t\t${key}: ${val}`);
 		});
-
-		help.push("\t\tquery: search query");
 
 		return help;
 	}
@@ -59,6 +57,7 @@ export default class Search implements Command {
 				}
 
 				currFlag = arg;
+				currVal = "";
 			} else {
 				if (currVal.length === 0) {
 					currVal = arg;
@@ -82,7 +81,7 @@ export default class Search implements Command {
 			if (url) {
 				window.open(url.replace("%s", encodeURIComponent(val)), "_blank");
 			} else {
-				terminal.printerr(`search: invalid search engine parameter: ${key}`);
+				terminal.printerr(`search: invalid search engine: ${key}`);
 			}
 		});
 	}

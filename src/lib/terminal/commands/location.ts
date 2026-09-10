@@ -37,7 +37,7 @@ export default class Location implements Command {
 			let response = await fetch(this.zipApi + `/${zipCode}`);
 
 			if (!response || !response.ok) {
-				throw new Error(`execute: invalid zipcode: ${zipCode}`);
+				throw new Error(`location: invalid zipcode: ${zipCode}`);
 			}
 
 			let json = await response.json();
@@ -58,7 +58,7 @@ export default class Location implements Command {
 			let response = await fetch(this.ipApi);
 
 			if (!response || !response.ok) {
-				throw new Error("execute: fetching ip api failed (likely rate limited)");
+				throw new Error("location: fetching ip api failed (likely rate limited)");
 			}
 
 			loc = await response.json();
