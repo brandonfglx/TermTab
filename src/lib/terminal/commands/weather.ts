@@ -91,8 +91,7 @@ export default class Weather implements Command {
 			`\t\tdays?: # of forecast days to show (up to maximum in data)`
 		];
 	}
-
-	// TODO: add options to regulate output (-z | --zipcode [zipcode], -d | --days [days])
+	
 	public parseArgs(args: string[]): Map<string, string> {
 		if (args.length === 0) {
 			return this.defaultArgs;
@@ -103,50 +102,46 @@ export default class Weather implements Command {
 		let currFlag = "";
 		let currVal = "";
 
-		try {
-			for (let arg of args) {
-				if (arg.startsWith("-")) {
-					if (currVal.length !== 0) {
-						map.set(currFlag, currVal);
-					}
+		for (let arg of args) {
+			if (arg.startsWith("-")) {
+				if (currVal.length !== 0) {
+					map.set(currFlag, currVal);
+				}
 
-					let mapped = this.argMapping.get(arg);
+				let mapped = this.argMapping.get(arg);
 
-					if (mapped) {
-						currFlag = mapped;
-					} else {
-						throw new Error(`weather: invalid argument: ${arg}`);
-					}
-
-					currVal = "";
+				if (mapped) {
+					currFlag = mapped;
 				} else {
-					switch (currFlag) {
-						case "zipCode":
-							// Only add "valid" zip codes
-							if (/[0-9]{5}/.test(arg)) {
-								currVal = arg;
-							} else {
-								throw new Error(`weather: invalid zip code: ${arg}`);
-							}
-							break;
-						case "days":
-							if (/[0-9]+/.test(arg)) {
-								currVal = arg;
-							} else {
-								throw new Error(`weather: invalid days: ${arg}`);
-							}
-							break;
-						default:
-							throw new Error(`weather: unknown flag: ${currFlag}`);
-					}
+					throw new Error(`weather: invalid argument: ${arg}`);
+				}
+
+				currVal = "";
+			} else {
+				switch (currFlag) {
+					case "zipCode":
+						// Only add "valid" zip codes
+						if (/[0-9]{5}/.test(arg)) {
+							currVal = arg;
+						} else {
+							throw new Error(`weather: invalid zip code: ${arg}`);
+						}
+						break;
+					case "days":
+						if (/[0-9]+/.test(arg)) {
+							currVal = arg;
+						} else {
+							throw new Error(`weather: invalid days: ${arg}`);
+						}
+						break;
+					default:
+						throw new Error(`weather: unknown flag: ${currFlag}`);
 				}
 			}
+		}
 
-			if (currFlag.length !== 0 && currVal.length !== 0) {
-				map.set(currFlag, currVal);
-			}
-		} catch (e: any) {
-			terminal.printerr(e);
+		if (currFlag.length !== 0 && currVal.length !== 0) {
+			map.set(currFlag, currVal);
 		}
 
 		return map;

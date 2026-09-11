@@ -58,11 +58,15 @@ class TerminalLine {
 }
 
 class Terminal {
-	public commands = $state(new SvelteMap<string, Command>()); // The available commands dynamically fetched from $lib/terminal/commands
-	public history = $state<TerminalLine[]>([]); // The history of all TerminalLines / text
-	public inputHistory = $state<TerminalLine[]>([]);
 	public input = $state(''); // The (not submitted) input from the user
 	public activeLine = $state(new TerminalLine()); // The line where the cursor is - mainly used for print()
+
+	public inputIndex = $state(0); // Current index on input string that is being modified (= input.length when at end)
+
+	public history = $state<TerminalLine[]>([]); // The history of all TerminalLines / text
+	public inputHistory = $state<TerminalLine[]>([]);
+
+	public commands = $state(new SvelteMap<string, Command>()); // The available commands dynamically fetched from $lib/terminal/commands
 	private inputFlags = new Map<string, KeyboardEvent>();
 	public executing = $state(false); // Flag to halt user input if a program is operating
 
@@ -145,6 +149,7 @@ class Terminal {
 
 		if (this.inputFlags.has("Enter")) {
 			this.historyCounter = 0;
+			this.inputIndex = 0;
 			this.execute();
 		} else if (this.inputFlags.has("Backspace")) {
 			if (this.input.length == 0) {
@@ -152,11 +157,16 @@ class Terminal {
 			}
 
 			if (this.inputFlags.get("Backspace")?.metaKey) {
-				this.input = "";
+				this.input = this.input.substring(this.inputIndex);
+				this.inputIndex = 0;
 			} else if (this.inputFlags.get("Backspace")?.altKey) {
-				this.input = this.input.substring(0, this.input.lastIndexOf(" "));
-			} else {
-				this.input = this.input.substring(0, this.input.length - 1);
+				let index = Math.max(0, this.input.lastIndexOf(" ", this.inputIndex - 1));
+				
+				this.input = this.input.substring(0, index) + this.input.substring(this.inputIndex);
+				this.inputIndex -= this.inputIndex - index;
+			} else if (this.inputIndex !== 0) {
+				this.input = this.input.substring(0, this.inputIndex - 1) + this.input.substring(this.inputIndex);
+				this.inputIndex--;
 			}
 		} else if (this.inputFlags.has("ArrowUp")) {
 			this.inputFlags.get("ArrowUp")?.preventDefault();
@@ -169,6 +179,7 @@ class Terminal {
 			});
 
 			this.input = rebuilt;
+			this.inputIndex = Math.max(0, Math.min(this.inputIndex, this.input.length));
 		} else if (this.inputFlags.has("ArrowDown")) {
 			this.inputFlags.get("ArrowDown")?.preventDefault();
 
@@ -184,6 +195,29 @@ class Terminal {
 			}
 
 			this.input = rebuilt;
+			this.inputIndex = Math.max(0, Math.min(this.inputIndex, this.input.length));
+		} else if (this.inputFlags.has("ArrowLeft")) {
+			let event = this.inputFlags.get("ArrowLeft")!;
+
+			if (event.metaKey) {
+				event.preventDefault();
+				this.inputIndex = 0;
+			} else if (event.altKey) {
+				this.inputIndex = Math.max(0, this.input.lastIndexOf(" ", this.inputIndex - 1));
+			} else {
+				this.inputIndex = Math.max(0, Math.min(this.inputIndex - 1, this.input.length));
+			}
+		} else if (this.inputFlags.has("ArrowRight")) {
+			let event = this.inputFlags.get("ArrowRight")!;
+
+			if (event.metaKey) {
+				event.preventDefault();
+				this.inputIndex = this.input.length;
+			} else if (event.altKey) {
+				this.inputIndex = this.input.indexOf(" ", this.inputIndex + 1) === -1 ? this.input.length : this.input.indexOf(" ", this.inputIndex + 1);
+			} else {
+				this.inputIndex = Math.max(0, Math.min(this.inputIndex + 1, this.input.length));
+			}
 		} else {
 			this.inputFlags.forEach((val: KeyboardEvent, key: string) => {
 				if (key === "/" || key == "'") {
@@ -193,8 +227,9 @@ class Terminal {
 					key = "\t";
 				}
 
-				if (!val.metaKey && !val.ctrlKey && key !== "Alt" && key !== "Shift" && key !== "Escape" && key !== "CapsLock" && key !== "ArrowLeft" && key !== "ArrowRight" && !/F[1-9][0-9]?/g.test(key) && key !== "Dead") {
-					this.input += key;
+				if (!val.metaKey && !val.ctrlKey && key !== "Alt" && key !== "Shift" && key !== "Escape" && key !== "CapsLock" && !/F[1-9][0-9]?/g.test(key) && key !== "Dead") {
+					this.input = this.input.substring(0, this.inputIndex) + key + this.input.substring(this.inputIndex);
+					this.inputIndex++;
 				}
 			});
 		}
@@ -240,7 +275,11 @@ class Terminal {
 		let comm = this.commands.get(cmd);
 
 		if (comm !== undefined) {
-			comm.execute(comm.parseArgs(cmdSplit.slice(1)));
+			try {
+				comm.execute(comm.parseArgs(cmdSplit.slice(1)));
+			} catch (e: any) {
+				this.printerr(e);
+			}
 		} else {
 			this.printerr(`TermTab: command not found: ${cmd}`);
 		}
